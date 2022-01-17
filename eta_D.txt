@@ -1,0 +1,124 @@
+function ReduceCantor(D, f)
+    g := Floor(Degree(f)/2);
+    u := D[1];
+    v := D[2];
+    while Degree(u) gt g do
+    u := (f - v^2) div u;
+    v := -v mod u;
+    end while;
+    u := u / LeadingCoefficient(u);
+    return [u, v];
+end function;
+
+function EndomorphismMaps(t1, n1, g)
+    R  := Parent(t1);
+    t  := [2, t1];
+    n  := [1, n1];
+    nn := ZeroMatrix(R, g+1, g+1);
+
+    for i := 3 to g + 1 do
+    Append(~n, n1*n[i-1]);
+    Append(~t, t1*t[i-1]-n1*t[i-2]);
+    end for;
+    
+    for i := 1 to g+1 do
+    nn[i, i] := n[i];
+    for j := i + 1 to g + 1 do
+        nn[i, j]:=n[i]*t[j-i+1];
+    end for;
+    end for;
+    
+    return t, nn; 
+end function ;
+
+function evalT(Pol, t)
+    R<X> := Parent(Pol);
+    ans  := 0;
+    for i := 0 to Degree(Pol) do
+    ans +:= Evaluate(t[i+1], X)*Coefficient(Pol, i);
+    end for;
+    return ans;
+end function;
+
+function evalN(Pol, nn)
+    R<X> := Parent(Pol);
+    ans  :=0;
+    for i := 0 to Degree(Pol) do
+    for j := 0 to Degree(Pol) do
+        ans +:= Evaluate(nn[i+1, j+1], X) *
+            Coefficient(Pol, i) * Coefficient(Pol, j);
+    end for;
+    end for;
+    return ans;
+end function;    
+
+function evaluate(D, f, t, nn)
+    F    := CoefficientRing(f);
+    R<X> := Parent(D[1]);
+    
+    a    := evalN(D[1], nn);
+    d    := evalT(D[2], t);
+    
+    E := LCM(Denominator(a), Denominator(d));
+    G := GCD(Numerator(a), Numerator(d));
+
+    a := R!((E * a) / G);
+    d := R!((E * d) / G);
+    
+    G, U, I := XGCD(a, d);
+    if d eq 0 then 
+        I := 0;
+    else
+        assert (I*d mod a) eq 1;
+    end if;
+
+    b := I * E * (Evaluate(f, X) + evalN(D[2], nn)) / G;
+    b := (R!b) mod a;
+    
+    return ReduceCantor([a, b], f);
+end function;
+
+q := 29;
+s := 20;
+
+F := GF(q);
+FX<X> := PolynomialRing(F);
+
+f := X^5 - 5*X^3 + 5*X + s;
+g := Floor((Degree(f) - 1) / 2);
+
+C := HyperellipticCurve(f);
+J := Jacobian(C);
+
+zeta :=  RootOfUnity(5, F);
+tau := zeta + zeta^(-1);
+tau := F!tau; //tau;
+
+// Note that eta are defined over Fq(tau), which is equal to Fq if and only if q !== +- 2 mod (5)
+assert  q mod 5 ne 2;
+assert  q mod 5 ne 3;
+
+t1 := 1*tau*X;
+n1 := X^2 + tau^2 - 4;
+
+t, nn := EndomorphismMaps(t1, n1, g);
+
+O := C![1,0,0];
+for P in Points(C) do
+    if (P eq O) then continue; end if;
+    D:= J ! [P, O];
+    etaD := evaluate(D, f, t, nn);
+    print "P:", P;
+    print "D:", D;
+    print "etaD:", etaD;
+    
+    if (#Roots(etaD[1]) gt 0) then
+        etaD := J!etaD;
+		print "find!";
+    else
+        print "extension~";
+    end if;
+    
+    print "";
+
+end for;

@@ -1,0 +1,36 @@
+q := 29;
+
+function frob(D)
+    R := Parent(D[1]);
+    p := #GF(q);
+
+    u := R![c^p : c in Eltseq(D[1])];
+    v := R![c^p : c in Eltseq(D[2])];
+    return Parent(D)![u,v];
+end function;
+
+
+GF_q<alpha> := GF(q, 2); 
+DefiningPolynomial(GF_q);
+
+F<X> := PolynomialRing(GF_q);
+f := X^5 - 5*X^3 + 5*X + 20;
+g := Floor((Degree(f) - 1) / 2);
+
+C := HyperellipticCurve(f);
+J := Jacobian(C);
+
+O := C![1,0,0];
+
+x_coor := X^2 + 23*X + 12;
+for root in Roots(x_coor) do
+    for P in Points(C, root[1]) do
+        D := J![P, O];
+        print D, Order(D);
+        print frob(D);
+        frob2 := frob(frob(D));
+        print frob2;
+        if (frob2 eq D) then print "frob^2 = D"; end if;
+print "";
+end for;
+end for;

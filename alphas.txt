@@ -1,0 +1,83 @@
+//////////////////////////////////////////////
+////////////// INITIALIZE ////////////////////
+//////////////////////////////////////////////
+
+Q<T> 		 := PolynomialRing(RationalField());
+min_poly_eta := T^2 + T - 1;
+Q_eta<eta>   := NumberField(min_poly_eta);
+O_Q_eta 	 := MaximalOrder(Q_eta);
+Z_eta 		 := EquationOrder(O_Q_eta);
+index 	 	 := Index(O_Q_eta, Z_eta);
+
+q 	 := 29;
+F<X> := PolynomialRing(GF(q));
+t 	 := 20;
+f 	 := X^5 - 5*X^3 + 5*X + t;
+g 	 := Floor((Degree(f) - 1) / 2);
+C 	 := HyperellipticCurve(f);
+J 	 := Jacobian(C);
+
+print C, "";
+print "Order J:", #J, "=", FactoredOrder(J), "";
+
+//////////////////////////////////////////////
+////////////// FUNCTIONS /////////////////////
+//////////////////////////////////////////////
+
+function checkConditions(l, q, min_poly_eta, Z_eta, g)
+    if l eq q then return false;
+    elif l eq Discriminant(min_poly_eta) then return false;
+    end if;
+   
+    ideals := Decomposition(Z_eta, l);
+    if #ideals ne g then return false; end if;
+    
+    return true;
+end function;
+
+function getAllAlphas(ideal, border, g, eta)
+	alphas := [];
+	for alphas_i in Subsequences({i : i in [-border..border]}, g) do
+		alpha := &+[alphas_i[i] * eta^(i-1): i in [1..g]];
+		if alpha eq 0 then continue; end if;
+		if alpha in ideal then
+			// [a0, a1, ...];
+			Append(~alphas, alphas_i);
+		end if;
+	end for;
+	
+	return alphas;
+end function;
+
+////////////////////////////////////////////
+////////////////// ALGORITHM ///////////////
+////////////////////////////////////////////
+
+roo := RootOfUnity(5, GF(q));
+tau := GF(q)!(roo + roo^(-1));
+print "tau:", tau, "";
+
+w := 1;
+l := 1;
+C_eta := 8;
+
+while w le 2 * index  * C_eta * Sqrt(q) + 1 do
+	l := NextPrime(l);
+	if checkConditions(l, q, min_poly_eta, Z_eta, g) eq false then continue; end if;
+	
+	ideals := Decomposition(Z_eta, l);
+	for ideal in ideals do
+		gen1, gen2 := TwoElementNormal(ideal[1]);
+		lambda := Floor(l - (Floor(gen2[1]) mod l));
+		border := Ceiling(index^(-1) * l^(1/g));
+		alphas := getAllAlphas(ideal[1], border, g, eta);
+		
+		print "l:", l;
+		print "lambda:", lambda;
+		print "alphas:", alphas;
+		
+	end for;
+	
+	w := w * l;
+
+end while;

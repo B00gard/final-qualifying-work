@@ -1,0 +1,99 @@
+//////////////////////////////////////////////
+////////////// INITIALIZE ////////////////////
+//////////////////////////////////////////////
+
+Q<T> 		 := PolynomialRing(RationalField());
+min_poly_eta := T^2 + T - 1;
+Q_eta<eta>   := NumberField(min_poly_eta);
+O_Q_eta 	 := MaximalOrder(Q_eta);
+Z_eta 		 := EquationOrder(O_Q_eta);
+index 	 	 := Index(O_Q_eta, Z_eta);
+
+q 	 := 29;
+F<X> := PolynomialRing(GF(q));
+t 	 := 20;
+f 	 := X^5 - 5*X^3 + 5*X + t;
+g 	 := Floor((Degree(f) - 1) / 2);
+C 	 := HyperellipticCurve(f);
+J 	 := Jacobian(C);
+
+print C, "";
+print "Order J:", #J, "=", FactoredOrder(J), "";
+
+function Proposition4_C_eta(g, q)
+
+	function Lemma3_alphas(q, g)
+
+		function Lemma3_alphas_recursive(alphas, i, q)
+			i := i - 2;
+			curr_alphas := [];
+			for j in [1 .. i+1] do
+				if j eq i+1 then
+					element := alphas[i+1][i];
+				elif j eq 1 then
+					element := -q * alphas[i][1];
+				else
+					element := alphas[i+1][j-1] - q*alphas[i][j];
+				end if;
+				Append(~curr_alphas, element);
+			end for;
+			Append(~curr_alphas, 1);
+			
+			return curr_alphas;
+		end function;
+
+		alphas := [[1], [0, 1], [-2*q, 0, 1]];
+		for i in [4 .. g+1] do
+			Append(~alphas, Lemma3_alphas_recursive(alphas, i, q));
+		end for;
+
+		return alphas;
+	end function;
+
+	function Proposition4_s(alphas, sigmas, g)
+		s := [];
+		for j in [1 .. g] do
+			element := 0;
+			for i in [j..g+1] do
+				element +:= + alphas[i][j]*sigmas[(g + 2) - i];
+			end for;
+			Append(~s, element);
+		end for;
+		
+		return s;
+	end function;
+	
+	coef_C := PolynomialRing(RationalField(), 2*g + 1);
+	AssignNames(~coef_C , ["c" cat IntegerToString(i) : i in [1..2*g + 1]]);
+	coef_C_borders := [(Binomial(2*g, i) * q^((2*g-i) / 2)) : i in [0 .. 2*g]];
+	
+	sigmas := [coef_C.(2*g-i) : i in [0..g]];
+	sigmas[g + 1] := sigmas[g + 1] / 2;
+	
+	alphas := Lemma3_alphas(q, g);
+	
+	Sj := Proposition4_s(alphas, sigmas, g);
+
+    s := [];
+    for j in [1 .. g] do
+        element := 0;
+        for i in [j .. g+1] do
+            if (i + g) eq (g + 1) then
+                element +:= Abs(alphas[i][j]) * coef_C_borders[i + g]/2;
+            else
+                element +:= Abs(alphas[i][j]) * coef_C_borders[i + g];
+            end if;
+        end for;
+        Append(~s, element^(1/(g + 1 - j)));
+    end for;
+    max, pos := Maximum(s);
+	
+	C_eta := Floor((2* max) / Sqrt(q));
+	
+    return C_eta;
+end function;
+
+C_eta := Proposition4_C_eta(g, q);
+
+print "Cn:", C_eta;
+
